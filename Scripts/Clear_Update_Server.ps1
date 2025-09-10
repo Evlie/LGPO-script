@@ -17,5 +17,6 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Evlie/LGPO-script/refs
 
 #Begin script execution 
 & "$baseDir/LGPO.exe" /t $baseDir/Policies/Remove_Target_Update_Server.scp
+gpupdate /force
 clear
 Remove-Item $baseDir -Recurse -Force
