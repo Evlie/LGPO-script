@@ -57,7 +57,7 @@ if ($office) {
     if (Test-Path "$baseDir/Office/Default_apps_for_business.xml") { Remove-Item -Path $baseDir/Office/Default_apps_for_business.xml}
     Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Evlie/LGPO-script/refs/heads/main/Office/Default_apps_for_business.xml" -OutFile "$baseDir/Office/Default_apps_for_business.xml"
     
-    Start-Process -FilePath "$baseDir/Office/OfficeSetup.exe" -ArgumentList "/download $baseDir/Office/Default_apps_for_business.xml" -Wait
-    Start-Process -FilePath "$baseDir/Office/OfficeSetup.exe" -ArgumentList "/configure $baseDir/Office/Default_apps_for_business.xml" -Wait
+    Start-Process -FilePath "$baseDir/Office/OfficeSetup.exe" -ArgumentList "/download "$baseDir/Office/Default_apps_for_business.xml"" -Wait
+    Start-Process -FilePath "$baseDir/Office/OfficeSetup.exe" -ArgumentList "/configure "$baseDir/Office/Default_apps_for_business.xml"" -Wait
 
 }
