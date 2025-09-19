@@ -1,4 +1,4 @@
-param ([switch] $chrome,[switch] $firefox,[switch] $adobe,[switch] $all,[switch] $devTest,[switch] $office)
+param ([switch] $chrome,[switch] $firefox,[switch] $adobe,[switch] $office,[switch] $all,[switch] $removeAV,[switch] $devTest)
 if ($all -or !$chrome -and !$firefox -and !$adobe -and !$office) { 
     $chrome = $true 
     $firefox = $true
@@ -22,13 +22,12 @@ $Serial = $Serial -replace ".*=" -replace "}.*"
 $Manufacturer = $currentMachine | Select-Object Manufacturer 
 $Manufacturer = $Manufacturer -replace ".*=" -replace "}.*"
 
-
-if (!(Test-Path $baseDir)) {
-    mkdir $baseDir
+if (!(Test-Path "$baseDir")) {
+    mkdir "$baseDir"
 }
 
 if ($adobe) {
-    if (!$devTest -or !(Test-Path $baseDir/AcroRdrDC.exe)) {Invoke-WebRequest -Uri $adobeMSI -OutFile "$baseDir/AcroRdrDC.exe"} 
+    if (!$devTest -or !(Test-Path "$baseDir/AcroRdrDC.exe")) {Invoke-WebRequest -Uri $adobeMSI -OutFile "$baseDir/AcroRdrDC.exe"} 
     Start-Process -FilePath "$baseDir/AcroRdrDC.exe" -ArgumentList "/sAll /rs EULA_ACCEPT=YES" -Wait
     Write-Output("Adobe install complete.")
     
@@ -40,24 +39,32 @@ if ($adobe) {
 }
 
 if ($chrome) {
-    if (!$devTest -or !(Test-Path $baseDir/ChromeInstaller.msi)) {Invoke-WebRequest -Uri $chromeMSI -OutFile "$baseDir/ChromeInstaller.msi"}
+    if (!$devTest -or !(Test-Path "$baseDir/ChromeInstaller.msi")) {Invoke-WebRequest -Uri $chromeMSI -OutFile "$baseDir/ChromeInstaller.msi"}
     Start-Process -FilePath "$baseDir/ChromeInstaller.msi" -ArgumentList "/qn" -Wait
     Write-Output("Chrome install complete.")
 }
 
 if ($firefox) {
-    if (!$devTest -or !(Test-Path $baseDir/FirefoxInstaller.msi)) {Invoke-WebRequest -Uri $firefoxMSI -OutFile "$baseDir/FirefoxInstaller.msi"}
+    if (!$devTest -or !(Test-Path "$baseDir/FirefoxInstaller.msi")) {Invoke-WebRequest -Uri $firefoxMSI -OutFile "$baseDir/FirefoxInstaller.msi"}
     Start-Process -FilePath "$baseDir/FirefoxInstaller.msi" -ArgumentList "/quiet" -Wait
     Write-Output("Firefox install complete.")
 }
 
 if ($office) {
-    if (!(Test-Path $baseDir/Office)) { mkdir $baseDir/Office }
-    if (!$devTest -or !(Test-Path $baseDir/Office/OfficeSetup.exe)) { Invoke-WebRequest -Uri "https://github.com/Evlie/LGPO-script/raw/refs/heads/main/Office/setup.exe" -OutFile "$baseDir/Office/OfficeSetup.exe" }
-    if (Test-Path "$baseDir/Office/Default_apps_for_business.xml") { Remove-Item -Path $baseDir/Office/Default_apps_for_business.xml}
+    if (!(Test-Path "$baseDir/Office")) { mkdir "$baseDir/Office" }
+    if (!$devTest -or !(Test-Path "$baseDir/Office/OfficeSetup.exe")) { Invoke-WebRequest -Uri "https://github.com/Evlie/LGPO-script/raw/refs/heads/main/Office/setup.exe" -OutFile "$baseDir/Office/OfficeSetup.exe" }
+    if (Test-Path "$baseDir/Office/Default_apps_for_business.xml") { Remove-Item -Path "$baseDir/Office/Default_apps_for_business.xml" }
     Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Evlie/LGPO-script/refs/heads/main/Office/Default_apps_for_business.xml" -OutFile "$baseDir/Office/Default_apps_for_business.xml"
     
     Start-Process -FilePath "$baseDir/Office/OfficeSetup.exe" -ArgumentList "/download "$baseDir/Office/Default_apps_for_business.xml"" -Wait
     Start-Process -FilePath "$baseDir/Office/OfficeSetup.exe" -ArgumentList "/configure "$baseDir/Office/Default_apps_for_business.xml"" -Wait
 
+    $source = "$env:ProgramData/Microsoft/Windows/Start Menu/Programs/"
+    $destination = ([Environment]::GetFolderPath("Desktop"))
+    $filteredFiles = @("Word.*", "Publisher.*","PowerPoint.*","Outlook (classic).*","Excel.*","Access.*")
+    
+    ForEach ($file in $filteredFiles) {
+        Copy-Item -Path "$source/$file" -Destination "$destination" -Force
+    }
+    Write-Output("Office install complete.")
 }
