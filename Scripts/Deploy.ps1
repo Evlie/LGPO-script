@@ -5,14 +5,15 @@ if ($all -or !$chrome -and !$firefox -and !$adobe -and !$office) {
     $adobe = $true 
     $office = $true
 }
-
 $ProgressPreference = 'SilentlyContinue'
-#Intial folder and files downloads
+
+If(-not(Get-InstalledModule -Name Microsoft.PowerShell.ThreadJob -ErrorAction silentlycontinue)){
+    Install-Module -Name Microsoft.PowerShell.ThreadJob -Confirm:$False -force
+}
+
+#Intialize folders and file downloads
 
 $baseDir = [System.IO.Path]::GetTempPath() + "MNB-RMM-TOOLS"
-$chromeMSI = "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi"
-$adobeMSI = "https://ardownload3.adobe.com/pub/adobe/reader/win/AcrobatDC/2500120693/AcroRdrDC2500120693_en_US.exe"
-$firefoxMSI = "https://download.mozilla.org/?product=firefox-msi-latest-ssl&os=win64&lang=en-GB"
 $adobeReaderReg = 'HKCU:\Software\Adobe\Acrobat Reader\DC\AVGeneral'
 $adobeAcrobatReg = 'HKCU:\Software\Adobe\Adobe Acrobat\DC\AVGeneral'
 
@@ -22,9 +23,44 @@ $Serial = $Serial -replace ".*=" -replace "}.*"
 $Manufacturer = $currentMachine | Select-Object Manufacturer 
 $Manufacturer = $Manufacturer -replace ".*=" -replace "}.*"
 
-if (!(Test-Path "$baseDir")) {
-    mkdir "$baseDir"
+$downloads =@(
+    @{Uri = "https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi"; OutFile = "$baseDir\ChromeInstaller.msi"}
+    @{Uri = "https://download.mozilla.org/?product=firefox-msi-latest-ssl&os=win64&lang=en-GB"; OutFile = "$baseDir\FirefoxInstaller.msi"}
+    @{Uri = "https://ardownload3.adobe.com/pub/adobe/reader/win/AcrobatDC/2500120693/AcroRdrDC2500120693_en_US.exe"; OutFile = "$baseDir\AcroRdrDC.exe"}
+    @{Uri = "https://github.com/Evlie/LGPO-script/raw/refs/heads/main/Office/setup.exe"; OutFile = "$baseDir\Office\OfficeSetup.exe"}
+    @{Uri = "https://raw.githubusercontent.com/Evlie/LGPO-script/refs/heads/main/Office/Default_apps_for_business.xml"; OutFile = "$baseDir\Office\Default_apps_for_business.xml"}
+)
+
+if (!$chrome) {$downloads[0] = $null}
+if (!$firefox) {$downloads[1] = $null}
+if (!$adobe) {$downloads[2] = $null}
+if (!$office) {$downloads[3] = $null, $downloads[4] = $null}
+
+
+#Core script
+
+if (!(Test-Path "$baseDir") -or $office) {
+    if (!(Test-Path "$baseDir")) {mkdir "$baseDir"}
+    if ($office -and !(Test-Path "$baseDir/Office")){
+        mkdir "$baseDir/Office"
+    }
 }
+
+$jobs = @()
+foreach ($file in $downloads) {
+    $jobs += Start-ThreadJob -Name $file.OutFile -ScriptBlock {
+        $params = $Using:file
+        Invoke-WebRequest @params
+    }
+}
+
+Write-Host "Downloads started..."
+Wait-Job -Job $jobs
+
+foreach ($job in $jobs) {
+    Receive-Job -Job $job
+}
+
 
 if ($adobe) {
     if (!$devTest -or !(Test-Path "$baseDir/AcroRdrDC.exe")) {Invoke-WebRequest -Uri $adobeMSI -OutFile "$baseDir/AcroRdrDC.exe"} 
